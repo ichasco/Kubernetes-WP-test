@@ -29,21 +29,23 @@ spec:
             value: "Europe/Madrid"
           resources:
             requests:
-              memory: "512Mi"
+              cpu: "100m"
+              memory: "128Mi"
             limits:
-              memory: "1Gi"
+              cpu: "200m"
+              memory: "254Mi"
           ports:
             - name: nginx-port
               containerPort: 80 
           livenessProbe:
-            exec:
-              command: ["pidof", "nginx"]  
+            tcpSocket:
+              port: nginx-port
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5             
           readinessProbe:
             tcpSocket:
-              port: nginx-port
+              port: nginx-port 
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
@@ -57,7 +59,7 @@ spec:
       volumes:
         - name: nginx-conf
           configMap:
-            name: nginx 
+            name: nginx-conf
             items:
               - key: virtualhost.conf
                 path: virtualhost.conf
@@ -67,7 +69,7 @@ spec:
                 path: cache.conf
         - name: nginx
           configMap:
-            name: nginx
+            name: nginx-conf
             items:
               - key: nginx.conf
                 path: nginx.conf

@@ -28,9 +28,11 @@ spec:
             name: mysql-secrets
         resources:
           requests:
-            memory: "512Mi"
+            cpu: "250m"
+            memory: "254Mi"
           limits:
-            memory: "1Gi"
+            cpu: "500m"
+            memory: "512Mi"
         ports:
         - name: mysql
           containerPort: 3306
@@ -40,7 +42,7 @@ spec:
           subPath: mysql
         livenessProbe:
           exec:
-            command: ["mysqladmin", "ping"]
+            command: ["mysqladmin", "ping", "-u", "root", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5

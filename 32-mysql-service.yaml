@@ -9,6 +9,6 @@ spec:
     app: mysql
   type: ClusterIP
   ports:
-  - name: nginx-port
+  - name: mysql-port
     port: 3306
-    targetPort: 3306
+    targetPort: mysql
