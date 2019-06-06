@@ -1,0 +1,76 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nginx
+        roles: web
+        stages: production
+    spec:
+      containers:
+        - name: nginx
+          image: "nginx:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: TZ
+            value: "Europe/Madrid"
+          resources:
+            requests:
+              memory: "512Mi"
+            limits:
+              memory: "1Gi"
+          ports:
+            - name: nginx-port
+              containerPort: 80 
+          livenessProbe:
+            exec:
+              command: ["pidof", "nginx"]  
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5             
+          readinessProbe:
+            tcpSocket:
+              port: nginx-port
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+            - name: wordpress-files
+              mountPath: /var/www/html   
+            - name: nginx
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf         
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: nginx 
+            items:
+              - key: virtualhost.conf
+                path: virtualhost.conf
+              - key: security.conf
+                path: security.conf
+              - key: cache.conf
+                path: cache.conf
+        - name: nginx
+          configMap:
+            name: nginx
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+        - name: wordpress-files
+          persistentVolumeClaim:
+            claimName: wordpress-files

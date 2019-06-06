@@ -1,0 +1,60 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: phpfpm
+  namespace: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpfpm
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: phpfpm
+        roles: web
+        stages: production
+    spec:
+      containers:
+        - name: phpfpm
+          image: "wordpress:php7.2-fpm"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: TZ
+            value: "Europe/Madrid"
+          envFrom:
+          - configMapRef:
+              name: phpfpm-conf
+          - secretRef:
+              name: phpfpm-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+            limits:
+              memory: "1Gi"
+          ports:
+          - name: phpfpm-port
+            containerPort: 9000  
+          livenessProbe:
+            exec:
+              command: ["pidof", "php-fpm"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5          
+          readinessProbe:
+            tcpSocket:
+              port: phpfpm-port
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: wordpress-files
+              mountPath: /var/www/html
+      volumes:
+        - name: wordpress-files
+          persistentVolumeClaim:
+            claimName: wordpress-files

@@ -1,0 +1,130 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx
+  namespace: production
+  labels:
+    app: nginx
+data:
+  nginx.conf: |
+    user www-data;
+    worker_processes auto;
+    worker_rlimit_nofile 100000;
+    pid /run/nginx.pid;
+    include /etc/nginx/modules-enabled/*.conf;
+
+    events {
+      worker_connections 1024;
+
+    }
+
+    http {
+
+      ##
+      # Basic Settings
+      ##
+
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      types_hash_max_size 2048;
+      reset_timedout_connection on;
+      client_body_timeout 10;
+      send_timeout 2;
+      keepalive_timeout 30;
+      keepalive_requests 100000;
+
+      open_file_cache max=200000 inactive=20s;
+      open_file_cache_valid 30s;
+      open_file_cache_min_uses 2;
+      open_file_cache_errors on;
+
+      include mime.types;
+      default_type application/octet-stream;    
+
+      ##
+      # Logging Settings
+      ##
+      access_log /dev/stdout;
+      error_log /dev/stdout;
+
+      ##
+      # Gzip Settings
+      ##
+      gzip on;
+      gzip_static on;
+      gzip_min_length 10240;
+      gzip_comp_level 1;
+      gzip_vary on;
+      gzip_disable msie6;
+      gzip_proxied expired no-cache no-store private auth;
+      gzip_types
+          # text/html is always compressed by HttpGzipModule
+          text/css
+          text/javascript
+          text/xml
+          text/plain
+          text/x-component
+          application/javascript
+          application/x-javascript
+          application/json
+          application/xml
+          application/rss+xml
+          application/atom+xml
+          font/truetype
+          font/opentype
+          application/vnd.ms-fontobject
+          image/svg+xml;
+
+      ##
+      # Virtual Host Configs
+      ##
+
+      include /etc/nginx/conf.d/*.conf;
+      include /etc/nginx/sites-enabled/*;
+    }
+  virtualhost.conf: |
+    server {
+      listen 80 default_server;
+      server_name _;
+      root /var/www/html;
+
+      location / {
+        try_files $uri $uri/ /index.php?$args;
+        index index.php;
+        proxy_cache                     cache;
+        proxy_buffering                 on;
+        proxy_cache_key                 $scheme$host$proxy_host$request_uri:$cookie_location;
+        proxy_cache_lock                on;
+        proxy_cache_use_stale           updating error timeout http_500 http_502 http_503 http_504;
+        proxy_cache_background_update   on;
+        proxy_cache_valid               200 301 302 30s;
+        proxy_ignore_headers            Set-Cookie;
+        proxy_ignore_headers            Cache-Control;
+        proxy_hide_header               Set-Cookie;
+        add_header                      X-Proxy-NGINX-Cache $upstream_cache_status;
+        proxy_set_header                X-Real-IP $remote_addr;
+      }
+      location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass phpfpm:9000;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME     $request_filename;
+        fastcgi_read_timeout 600;
+      }
+    }
+  security.conf: |
+    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload";
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header 'Referrer-Policy' 'no-referrer-when-downgrade';
+    add_header X-Permitted-Cross-Domain-Policies none;
+    #add_header Content-Security-Policy "default-src https: data: 'unsafe-inline' 'unsafe-eval'" always;
+    proxy_hide_header X-Powered-By;
+    fastcgi_hide_header X-Powered-By;
+    ignore_invalid_headers on;
+    server_tokens off;
+  cache.conf: |
+    proxy_cache_path /tmp/cache keys_zone=cache:10m levels=1:2 inactive=600s max_size=100m;
