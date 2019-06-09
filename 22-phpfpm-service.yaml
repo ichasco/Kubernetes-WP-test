@@ -9,6 +9,6 @@ spec:
     app: phpfpm
   type: ClusterIP
   ports:
-  - name: nginx-port
+  - name: phpfpm-port
     port: 9000
     targetPort: 9000
